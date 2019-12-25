@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -12,9 +13,9 @@ func parseKampas() {
 	url := "https://www.kampas.lt/api/classifieds/search-new?query={%22municipality%22%3A%2258%22%2C%22settlement%22%3A19220%2C%22page%22%3A1%2C%22sort%22%3A%22new%22%2C%22section%22%3A%22bustas-nuomai%22%2C%22type%22%3A%22flat%22}"
 
 	// Get HTML:
-	content, err := downloadAsBytes(url)
+	content, err := getBytes(url)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 
@@ -30,30 +31,21 @@ func parseKampas() {
 		link := "https://www.kampas.lt/skelbimai/" + fmt.Sprintf("%v", mypost["id"])
 
 		// Skip if post already in DB:
-		exists, _ := post{url: link}.postExistsInDB()
+		exists, _ := postURLInDB(link)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 		if exists {
 			continue
 		}
 
-		phone := ""
-		heating := ""
-		// Get content as Goquery Document:
-		doc, err := downloadAsGoqueryDocument(link)
-		if err == nil {
-			attr, exists := doc.Find("div.sidebar span.hidden.hidden-phone > a.btn").First().Attr("href")
-			if exists {
-				phone = strings.ReplaceAll(strings.ReplaceAll(attr, "tel:", ""), " ", "")
-			}
-
-			heating = doc.Find("i.i-heating+span").Text()
-		}
-
 		p := post{
 			url:         link,
-			phone:       phone,
+			phone:       "", // Impossible - anti bot too good
 			description: strings.ReplaceAll(fmt.Sprintf("%v", mypost["description"]), "<br/>", "\n"),
 			address:     fmt.Sprintf("%v", mypost["title"]),
-			heating:     heating,
+			heating:     "", // Impossible
 			floor:       interfaceToNumber(mypost["objectfloor"]),
 			floorTotal:  interfaceToNumber(mypost["totalfloors"]),
 			area:        interfaceToNumber(mypost["objectarea"]),
