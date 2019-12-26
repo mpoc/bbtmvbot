@@ -19,8 +19,8 @@ func handleCommandStats(m *tb.Message) {
 		return
 	}
 
-	msg := fmt.Sprintf(statsTemplate, s.usersCount,
-		s.enabledUsersCount, s.postsCount, s.averagePriceFrom,
+	msg := fmt.Sprintf(statsTemplate, s.usersCount, s.enabledUsersCount,
+		s.usersCount-s.usersWithFee, s.postsCount, s.averagePriceFrom,
 		s.averagePriceTo, s.averageRoomsFrom, s.averageRoomsTo)
 
 	sendTo(m.Sender, msg)
