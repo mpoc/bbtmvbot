@@ -9,6 +9,8 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+var userAgent = "Mozilla/5.0 (Linux; Android 9; SAMSUNG GT-I9505 Build/LRX22C) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.93 Mobile Safari/537.36"
+
 func compileAddressWithStreet(state, street, houseNumber string) (address string) {
 	if state == "" {
 		address = "Vilnius"
@@ -34,7 +36,16 @@ func compileAddress(state, street string) (address string) {
 }
 
 func getBytes(link string) ([]byte, error) {
-	res, err := http.Get(link)
+
+	client := &http.Client{
+		//CheckRedirect: redirectPolicyFunc,
+	}
+	req, err := http.NewRequest("GET", link, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +62,18 @@ func getBytes(link string) ([]byte, error) {
 }
 
 func getGoqueryDocument(link string) (*goquery.Document, error) {
-	res, err := http.Get(link)
+
+	client := &http.Client{
+		//CheckRedirect: redirectPolicyFunc,
+	}
+
+	req, err := http.NewRequest("GET", link, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	res, err := client.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
