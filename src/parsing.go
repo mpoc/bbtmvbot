@@ -36,23 +36,9 @@ func compileAddress(state, street string) (address string) {
 }
 
 func getBytes(link string) ([]byte, error) {
-
-	client := &http.Client{
-		//CheckRedirect: redirectPolicyFunc,
-	}
-	req, err := http.NewRequest("GET", link, nil)
+	res, err := sendGetRequest(link)
 	if err != nil {
 		return nil, err
-	}
-	req.Header.Set("User-Agent", userAgent)
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != 200 {
-		u, _ := url.Parse(link)
-		return nil, fmt.Errorf("status code error: %s (from %s)", res.Status, u.Host)
 	}
 	content, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -62,25 +48,30 @@ func getBytes(link string) ([]byte, error) {
 }
 
 func getGoqueryDocument(link string) (*goquery.Document, error) {
-
-	client := &http.Client{
-		//CheckRedirect: redirectPolicyFunc,
+	res, err := sendGetRequest(link)
+	if err != nil {
+		return nil, err
 	}
+	return goquery.NewDocumentFromReader(res.Body)
+}
 
+func sendGetRequest(link string) (*http.Response, error) {
+	client := &http.Client{}
 	req, err := http.NewRequest("GET", link, nil)
 	if err != nil {
 		return nil, err
 	}
+
 	req.Header.Set("User-Agent", userAgent)
 	res, err := client.Do(req)
-
 	if err != nil {
 		return nil, err
 	}
+
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
 		u, _ := url.Parse(link)
 		return nil, fmt.Errorf("status code error: %s (from %s)", res.Status, u.Host)
 	}
-	return goquery.NewDocumentFromReader(res.Body)
+	return res, nil
 }
