@@ -58,7 +58,7 @@ func handleCommandDisable(m *tb.Message) {
 	sendTo(m.Sender, "Pranešimai išjungti! Naudokite komandą /enable kad juos įjungti.\n\n"+ActiveSettingsText)
 }
 
-var validConfig = regexp.MustCompile(`^\/config (\d{1,5}) (\d{1,5}) (\d{1,2}) (\d{1,2}) (\d{4})$`)
+var validConfig = regexp.MustCompile(`^/config (\d{1,5}) (\d{1,5}) (\d{1,2}) (\d{1,2}) (\d{4}) (taip|ne)$`)
 
 func handleCommandConfig(m *tb.Message) {
 	msg := strings.ToLower(strings.TrimSpace(m.Text))
