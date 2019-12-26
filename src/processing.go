@@ -216,12 +216,15 @@ func (p post) sendToUsers(postID int64) {
 	enabled=1 AND
 	((price_from <= ? AND price_to >= ?) OR ? = 0) AND
 	((rooms_from <= ? AND rooms_to >= ?) OR ? = 0) AND
-	(year_from <= ? OR ? = 0) AND
-	(show_with_fee = ?)`
+	(year_from <= ? OR ? = 0) `
+
+	if p.withFee {
+		query += " AND show_with_fee = 1"
+	}
 
 	rows, err := db.Query(query, p.price, p.price,
 		p.price, p.rooms, p.rooms,
-		p.rooms, p.year, p.year, p.withFee)
+		p.rooms, p.year, p.year)
 	if err != nil {
 		log.Println(err)
 		return
