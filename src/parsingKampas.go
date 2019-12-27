@@ -31,7 +31,7 @@ func parseKampas() {
 		link := "https://www.kampas.lt/skelbimai/" + fmt.Sprintf("%v", mypost["id"])
 
 		// Skip if post already in DB:
-		exists, _ := postURLInDB(link)
+		exists, err := postURLInDB(link)
 		if err != nil {
 			log.Println(err)
 			return
