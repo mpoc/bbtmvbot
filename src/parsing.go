@@ -12,25 +12,17 @@ import (
 var userAgent = "Mozilla/5.0 (Linux; Android 9; SAMSUNG GT-I9505 Build/LRX22C) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.93 Mobile Safari/537.36"
 
 func compileAddressWithStreet(state, street, houseNumber string) (address string) {
-	if state == "" {
-		address = "Vilnius"
-	} else if street == "" {
-		address = "Vilnius, " + state
-	} else if houseNumber == "" {
-		address = "Vilnius, " + state + ", " + street
-	} else {
-		address = "Vilnius, " + state + ", " + street + " " + houseNumber
-	}
+	address = compileAddress(state, street+" "+houseNumber)
 	return
 }
 
 func compileAddress(state, street string) (address string) {
-	if state == "" {
-		address = "Vilnius"
-	} else if street == "" {
-		address = "Vilnius, " + state
-	} else {
-		address = "Vilnius, " + state + ", " + street
+	address = "Vilnius"
+	if state != "" {
+		address += ", " + state
+	}
+	if street != "" {
+		address += ", " + street
 	}
 	return
 }
