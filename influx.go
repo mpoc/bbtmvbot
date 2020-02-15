@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 )
 
-func initInflux() {
+func influx() {
 	http.HandleFunc("/influx", handleInfluxRequest)
-	log.Fatal(http.ListenAndServe(":3999", nil))
+	panic(http.ListenAndServe(":3999", nil))
 }
 
 func handleInfluxRequest(w http.ResponseWriter, r *http.Request) {

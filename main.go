@@ -39,38 +39,31 @@ var db *sql.DB
 
 func main() {
 
-	var err error
-
 	// Connect to DB
+	var err error
 	db, err = sql.Open("sqlite3", "file:./database.db?_mutex=full")
 	if err != nil {
-		log.Println(err)
+		panic(err)
 	}
 	defer db.Close()
 
-	// Start web server for Influx line protocol stats
-	go initInflux()
+	// Web server for influx line protocol
+	go influx()
 
-	// Connect to Telegram bot
+	// Define Telegram bot middleware
 	poller := &tb.LongPoller{Timeout: 15 * time.Second}
 	middlewarePoller := tb.NewMiddlewarePoller(poller, func(upd *tb.Update) bool {
-
-		// We only care about messages
-		// TODO: Does this IF statement even needed?
-		if upd.Message == nil {
-			return false
-		}
-
-		ensureUserInDB(upd.Message.Sender.ID)
-
-		// Always accept update from Telegram bot
-		return true
+		ensureUserInDB(upd.Message.Chat.ID)
+		return true // Accept update
 	})
-	bot, err = tb.NewBot(tb.Settings{Token: readAPIFromFile(), URL: "", Poller: middlewarePoller})
+
+	// Connect Telegram bot to Telegram API
+	bot, err = tb.NewBot(tb.Settings{Token: readAPIFromFile(), Poller: middlewarePoller})
 	if err != nil {
 		panic(err)
 	}
 
+	// Telegram bot commands
 	bot.Handle("/help", handleCommandHelp)
 	bot.Handle("/config", handleCommandConfig)
 	bot.Handle("/enable", handleCommandEnable)
@@ -147,7 +140,7 @@ func readAPIFromFile() string {
 	return strings.TrimSpace(string(content))
 }
 
-func ensureUserInDB(userID int) {
+func ensureUserInDB(userID int64) {
 	query := "INSERT OR IGNORE INTO users(id) VALUES(?)"
 	_, err := db.Exec(query, userID)
 	if err != nil {
