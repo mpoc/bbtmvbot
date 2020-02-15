@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -9,52 +8,6 @@ import (
 
 	tb "gopkg.in/tucnak/telebot.v2"
 )
-
-func handleCommandStats(m *tb.Message) {
-	s, err := getStats()
-	if err != nil {
-		sendTo(m.Sender, errorText)
-		return
-	}
-
-	msg := fmt.Sprintf(statsTemplate, s.usersCount,
-		s.enabledUsersCount, s.postsCount, s.averagePriceFrom,
-		s.averagePriceTo, s.averageRoomsFrom, s.averageRoomsTo)
-
-	sendTo(m.Sender, msg)
-}
-
-func handleCommandEnable(m *tb.Message) {
-	query := "UPDATE users SET enabled=1 WHERE id=?"
-	_, err := db.Exec(query, m.Sender.ID)
-	if err != nil {
-		sendTo(m.Sender, errorText)
-		return
-	}
-
-	ActiveSettingsText, err := getActiveSettingsText(m.Sender)
-	if err != nil {
-		sendTo(m.Sender, errorText)
-		return
-	}
-	sendTo(m.Sender, "Pranešimai įjungti! Naudokite komandą /disable kad juos išjungti.\n\n"+ActiveSettingsText)
-}
-
-func handleCommandDisable(m *tb.Message) {
-	query := "UPDATE users SET enabled=0 WHERE id=?"
-	_, err := db.Exec(query, m.Sender.ID)
-	if err != nil {
-		sendTo(m.Sender, errorText)
-		return
-	}
-
-	ActiveSettingsText, err := getActiveSettingsText(m.Sender)
-	if err != nil {
-		sendTo(m.Sender, errorText)
-		return
-	}
-	sendTo(m.Sender, "Pranešimai išjungti! Naudokite komandą /enable kad juos įjungti.\n\n"+ActiveSettingsText)
-}
 
 var validConfig = regexp.MustCompile(`^\/config (\d{1,5}) (\d{1,5}) (\d{1,2}) (\d{1,2}) (\d{4})$`)
 
@@ -105,13 +58,4 @@ func handleCommandConfig(m *tb.Message) {
 		return
 	}
 	sendTo(m.Sender, "Nustatymai atnaujinti ir pranešimai įjungti!\n\n"+ActiveSettingsText)
-}
-
-func handleCommandHelp(m *tb.Message) {
-	ActiveSettingsText, err := getActiveSettingsText(m.Sender)
-	if err != nil {
-		sendTo(m.Sender, errorText)
-		return
-	}
-	sendTo(m.Sender, helpText+"\n\n"+ActiveSettingsText)
 }
