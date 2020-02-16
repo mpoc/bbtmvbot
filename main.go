@@ -53,6 +53,12 @@ func main() {
 	// Define Telegram bot middleware
 	poller := &tb.LongPoller{Timeout: 15 * time.Second}
 	middlewarePoller := tb.NewMiddlewarePoller(poller, func(upd *tb.Update) bool {
+
+		// Ignore messages from group chats
+		if !upd.Message.Private() {
+			return false
+		}
+
 		ensureUserInDB(upd.Message.Chat.ID)
 		return true // Accept update
 	})
@@ -113,7 +119,7 @@ var telegramMux sync.Mutex
 var startTime time.Time
 var elapsedTime time.Duration
 
-func sendTo(sender *tb.User, msg string) {
+func sendTo(sender *tb.User, msg string, options ...interface{}) {
 	go func() {
 		telegramMux.Lock()
 		defer telegramMux.Unlock()
@@ -122,7 +128,7 @@ func sendTo(sender *tb.User, msg string) {
 		bot.Send(sender, msg, &tb.SendOptions{
 			ParseMode:             "Markdown",
 			DisableWebPagePreview: true,
-		})
+		}, options)
 		elapsedTime = time.Since(startTime)
 
 		// See https://core.telegram.org/bots/faq#my-bot-is-hitting-limits-how-do-i-avoid-this
