@@ -44,7 +44,7 @@ func getBytes(link string) ([]byte, error) {
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
 		u, _ := url.Parse(link)
-		return nil, fmt.Errorf("status code error: %s (from %s)", res.Status, u.Host)
+		return nil, fmt.Errorf("status code error: %s (from %s)", res.Status, u)
 	}
 	content, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -72,7 +72,7 @@ func getGoqueryDocument(link string) (*goquery.Document, error) {
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
 		u, _ := url.Parse(link)
-		return nil, fmt.Errorf("status code error: %s (from %s)", res.Status, u.Host)
+		return nil, fmt.Errorf("status code error: %s (from %s)", res.Status, u)
 	}
 	return goquery.NewDocumentFromReader(res.Body)
 }

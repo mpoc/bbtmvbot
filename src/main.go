@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -92,23 +93,25 @@ func main() {
 	bot.Handle("/disable", handleCommandDisable)
 	bot.Handle("/stats", handleCommandStats)
 
-	// Start parsers in separate goroutines:
-	go func() {
-		time.Sleep(5 * time.Second) // Wait few seconds so Telegram bot starts up
-		for {
-			go parseAruodas()
-			go parseSkelbiu()
-			go parseDomoplius()
-			go parseAlio()
-			go parseRinka()
-			go parseKampas()
-			go parseNuomininkai()
-			time.Sleep(3 * time.Minute)
-		}
-	}()
-
 	// Start bot:
-	bot.Start()
+	go bot.Start()
+
+	// Start parsers in separate goroutines:
+	time.Sleep(5 * time.Second) // Wait few seconds so Telegram bot starts up
+	for {
+		go parseAruodas()
+		go parseSkelbiu()
+		go parseDomoplius()
+		go parseAlio()
+		go parseRinka()
+		go parseKampas()
+		go parseNuomininkai()
+		minimumWaitMinutes := 3
+		maxDelay := 2
+		randomDelay := rand.Intn(maxDelay)
+
+		time.Sleep(time.Duration(minimumWaitMinutes+randomDelay) * time.Minute)
+	}
 }
 
 func databaseConnect() {
