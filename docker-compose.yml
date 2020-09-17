@@ -1,0 +1,9 @@
+version: "3.8"
+
+services:
+  bbtmvbot:
+    container_name: bbtmvbot
+    build: .
+    volumes:
+      - ./telegram.conf:/app/telegram.conf
+      - ./database.db:/app/database.db

@@ -1,0 +1,6 @@
+.git
+.vscode
+.dockerignore
+bbtmvbot
+database.db
+telegram.conf
