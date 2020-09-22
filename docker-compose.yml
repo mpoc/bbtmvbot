@@ -3,6 +3,7 @@ version: "3.8"
 services:
   bbtmvbot:
     container_name: bbtmvbot
+    restart: unless-stopped
     build: .
     volumes:
       - ./telegram.conf:/app/telegram.conf
