@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
-	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -38,28 +36,25 @@ type stats struct {
 	usersWithFee      int
 }
 
-var db *sql.DB
-
 var bot *tb.Bot
 
-// We need to ensure that only one goroutine at a time can access `sendTo` function:
-var telegramMux sync.Mutex
-var startTime time.Time
-var elapsedTime time.Duration
+var db *sql.DB
 
 func main() {
 
+	var err error
+
 	// Connect to DB
-	databaseConnect()
+	db, err = sql.Open("sqlite3", "file:./database.db?_mutex=full")
+	if err != nil {
+		log.Println(err)
+	}
 	defer db.Close()
 
-	// Start web server for InfluxDB data
-	go func() {
-		http.HandleFunc("/influx", handleRequestInflux)
-		log.Fatal(http.ListenAndServe(":3999", nil))
-	}()
+	// Start web server for Influx line protocol stats
+	go initInflux()
 
-	// Setup Telegrambot API
+	// Connect to Telegram bot
 	poller := &tb.LongPoller{Timeout: 15 * time.Second}
 	middlewarePoller := tb.NewMiddlewarePoller(poller, func(upd *tb.Update) bool {
 
@@ -69,22 +64,14 @@ func main() {
 			return false
 		}
 
-		// Make sure user exists in database
-		if !ensureUserInDB(upd.Message.Sender.ID) {
-			sendTo(upd.Message.Sender, errorText)
-		}
+		ensureUserInDB(upd.Message.Sender.ID)
 
-		// Always accept all updates from Telegram
+		// Always accept update from Telegram bot
 		return true
 	})
-	var err error
-	bot, err = tb.NewBot(tb.Settings{
-		Token: readAPIFromFile(), URL: "",
-		Poller: middlewarePoller,
-	})
+	bot, err = tb.NewBot(tb.Settings{Token: readAPIFromFile(), URL: "", Poller: middlewarePoller})
 	if err != nil {
-		log.Println(err)
-		return
+		panic(err)
 	}
 
 	bot.Handle("/help", handleCommandHelp)
@@ -93,33 +80,26 @@ func main() {
 	bot.Handle("/disable", handleCommandDisable)
 	bot.Handle("/stats", handleCommandStats)
 
+	// Start parsers in separate goroutine:
+	go func() {
+		time.Sleep(5 * time.Second) // Wait few seconds so Telegram bot starts up
+		for {
+			go parseAruodas()
+			go parseSkelbiu()
+			go parseDomoplius()
+			go parseAlio()
+			go parseRinka()
+			go parseKampas()
+			go parseNuomininkai()
+			minimumWaitMinutes := 3
+			maxDelay := 2
+			randomDelay := rand.Intn(maxDelay)
+			time.Sleep(time.Duration(minimumWaitMinutes+randomDelay) * time.Minute)
+		}
+	}()
+
 	// Start bot:
-	go bot.Start()
-
-	// Start parsers in separate goroutines:
-	time.Sleep(5 * time.Second) // Wait few seconds so Telegram bot starts up
-	for {
-		go parseAruodas()
-		go parseSkelbiu()
-		go parseDomoplius()
-		go parseAlio()
-		go parseRinka()
-		go parseKampas()
-		go parseNuomininkai()
-		minimumWaitMinutes := 3
-		maxDelay := 2
-		randomDelay := rand.Intn(maxDelay)
-
-		time.Sleep(time.Duration(minimumWaitMinutes+randomDelay) * time.Minute)
-	}
-}
-
-func databaseConnect() {
-	var err error
-	db, err = sql.Open("sqlite3", "file:./database.db?_mutex=full")
-	if err != nil {
-		log.Println(err)
-	}
+	bot.Start()
 }
 
 func getActiveSettingsText(sender *tb.User) (string, error) {
@@ -146,9 +126,15 @@ func getActiveSettingsText(sender *tb.User) (string, error) {
 	return msg, nil
 }
 
+// We need to ensure that only one goroutine at a time can access `sendTo` function:
+var telegramMux sync.Mutex
+var startTime time.Time
+var elapsedTime time.Duration
+
 func sendTo(sender *tb.User, msg string) {
 	go func() {
 		telegramMux.Lock()
+		defer telegramMux.Unlock()
 
 		startTime = time.Now()
 		bot.Send(sender, msg, &tb.SendOptions{
@@ -161,39 +147,31 @@ func sendTo(sender *tb.User, msg string) {
 		if elapsedTime < 30*time.Millisecond {
 			time.Sleep(30*time.Millisecond - elapsedTime)
 		}
-
-		telegramMux.Unlock()
 	}()
 }
 
 func readAPIFromFile() string {
-	apiBytes, err := ioutil.ReadFile("telegram.conf")
+	content, err := ioutil.ReadFile("telegram.conf")
 	if err != nil {
-		log.Println("Unable to read API from file:", err)
-		os.Exit(1) // exit with return code 1
+		panic(err)
 	}
-	return strings.TrimSpace(string(apiBytes))
+	return strings.TrimSpace(string(content))
 }
 
-func ensureUserInDB(userID int) bool {
+func ensureUserInDB(userID int) {
 	query := "INSERT OR IGNORE INTO users(id) VALUES(?)"
 	_, err := db.Exec(query, userID)
 	if err != nil {
-		log.Println(err)
-		return false
+		panic(err)
 	}
-	return true
 }
 
 func getUser(userID int) (user, error) {
 	query := "SELECT * FROM users WHERE id=? LIMIT 1"
 	var u user
-	err := db.QueryRow(query, userID).Scan(&u.id, &u.enabled,
-		&u.priceFrom, &u.priceTo, &u.roomsFrom,
-		&u.roomsTo, &u.yearFrom, &u.showWithFee)
+	err := db.QueryRow(query, userID).Scan(&u.id, &u.enabled, &u.priceFrom, &u.priceTo, &u.roomsFrom, &u.roomsTo, &u.yearFrom,  &u.showWithFee)
 	if err != nil {
-		log.Println(err)
-		return user{}, err
+		panic(err)
 	}
 	return u, nil
 }
