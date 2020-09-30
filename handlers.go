@@ -59,7 +59,7 @@ func handleUserStatusChange(m *tb.Message, stateStatus StatusChangeType) {
 	sendTo(m.Sender, message+"\n\n"+ActiveSettingsText)
 }
 
-var validConfig = regexp.MustCompile(`^/config (\d{1,5}) (\d{1,5}) (\d{1,2}) (\d{1,2}) (\d{4}) (taip|ne)$`)
+var validConfig = regexp.MustCompile(`^/config (\d{1,5}) (\d{1,5}) (\d{1,2}) (\d{1,2}) (\d{4}) (\d{1,3}) (taip|ne)$`)
 
 func handleCommandConfig(m *tb.Message) {
 	msg := strings.ToLower(strings.TrimSpace(m.Text))
@@ -83,21 +83,23 @@ func handleCommandConfig(m *tb.Message) {
 	roomsFrom, _ := strconv.Atoi(extracted[3])
 	roomsTo, _ := strconv.Atoi(extracted[4])
 	yearFrom, _ := strconv.Atoi(extracted[5])
-	showWithFees := strings.ToLower(extracted[6]) == "taip"
+	minFloor, _ := strconv.Atoi(extracted[6])
+	showWithFee := strings.ToLower(extracted[7]) == "taip"
 
 	// Values check
 	priceCorrect := priceFrom >= 0 || priceTo <= 100000 && priceTo >= priceFrom
 	roomsCorrect := roomsFrom >= 0 || roomsTo <= 100 && roomsTo >= roomsFrom
 	yearCorrect := yearFrom <= time.Now().Year()
+	minFloorCorrect := minFloor >= 0 && minFloor <= 100
 
-	if !(priceCorrect && roomsCorrect && yearCorrect) {
+	if !(priceCorrect && roomsCorrect && yearCorrect && minFloorCorrect) {
 		sendTo(m.Sender, configErrorText)
 		return
 	}
 
 	// Update in DB
-	query := "UPDATE users SET enabled=1, price_from=?, price_to=?, rooms_from=?, rooms_to=?, year_from=?, show_with_fee=? WHERE id=?"
-	_, err := db.Exec(query, priceFrom, priceTo, roomsFrom, roomsTo, yearFrom, showWithFees, m.Sender.ID)
+	query := "UPDATE users SET enabled=1, price_from=?, price_to=?, rooms_from=?, rooms_to=?, year_from=?, min_floor=?, show_with_fee=? WHERE id=?"
+	_, err := db.Exec(query, priceFrom, priceTo, roomsFrom, roomsTo, yearFrom, minFloor, showWithFee, m.Sender.ID)
 	if err != nil {
 		sendTo(m.Sender, errorText)
 		return

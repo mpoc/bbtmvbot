@@ -22,6 +22,7 @@ type user struct {
 	roomsFrom   int
 	roomsTo     int
 	yearFrom    int
+	minFloor    int
 	showWithFee int
 }
 
@@ -116,13 +117,13 @@ func getActiveSettingsText(sender *tb.User) (string, error) {
 		status = "Išjungti"
 	}
 
-	showWithFee := "taip"
+	var showWithFee = "taip"
 	if u.showWithFee == 0 {
 		showWithFee = "ne"
 	}
 
-	msg := fmt.Sprintf(activeSettingsText, status, u.priceFrom,
-		u.priceTo, u.roomsFrom, u.roomsTo, u.yearFrom, showWithFee)
+	msg := fmt.Sprintf(activeSettingsText, status, u.priceFrom, u.priceTo,
+		u.roomsFrom, u.roomsTo, u.yearFrom, u.minFloor, showWithFee)
 	return msg, nil
 }
 
@@ -169,7 +170,7 @@ func ensureUserInDB(userID int) {
 func getUser(userID int) (user, error) {
 	query := "SELECT * FROM users WHERE id=? LIMIT 1"
 	var u user
-	err := db.QueryRow(query, userID).Scan(&u.id, &u.enabled, &u.priceFrom, &u.priceTo, &u.roomsFrom, &u.roomsTo, &u.yearFrom,  &u.showWithFee)
+	err := db.QueryRow(query, userID).Scan(&u.id, &u.enabled, &u.priceFrom, &u.priceTo, &u.roomsFrom, &u.roomsTo, &u.yearFrom, &u.minFloor, &u.showWithFee)
 	if err != nil {
 		panic(err)
 	}

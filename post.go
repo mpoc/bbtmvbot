@@ -138,7 +138,7 @@ func (p *Post) message(ID int64) string {
 		fmt.Fprintf(&sb, "» *Aukštas:* `%d`\n", p.Floor)
 	}
 
-	showWithFee := "taip"
+	var showWithFee = "taip"
 	if !p.WithFee {
 		showWithFee = "ne"
 	}
@@ -161,7 +161,8 @@ func (p *Post) send(postID int64) {
 	enabled=1 AND
 	((price_from <= ? AND price_to >= ?) OR ? = 0) AND
 	((rooms_from <= ? AND rooms_to >= ?) OR ? = 0) AND
-	(year_from <= ? OR ? = 0)`
+	(year_from <= ? OR ? = 0) AND
+	min_floor <= ?`
 
 	if p.WithFee {
 		query += " AND show_with_fee = 1"
@@ -170,7 +171,7 @@ func (p *Post) send(postID int64) {
 	rows, err := db.Query(query,
 		p.Price, p.Price,
 		p.Price, p.Rooms, p.Rooms,
-		p.Rooms, p.Year, p.Year)
+		p.Rooms, p.Year, p.Year, p.Floor)
 	if err != nil {
 		panic(err)
 		//return
@@ -240,7 +241,7 @@ func (p *Post) Handle() {
 	p.Address = strings.TrimSpace(strings.Title(p.Address))
 	p.Heating = strings.TrimSpace(p.Heating)
 
-	// Exclude
+	// Check if we need to exclude this post
 	if excluded, reason := p.isExcluded(); excluded {
 		rowID := p.toDatabase(true, reason)
 		log.Println("// Excluded ", rowID, "|", reason)
@@ -250,6 +251,7 @@ func (p *Post) Handle() {
 	withFee, _ := p.hasFee()
 	p.setWithFee(withFee)
 
+	// Add to database, so it won't be sent again
 	rowID := p.toDatabase(false, "")
 
 	p.send(rowID)
