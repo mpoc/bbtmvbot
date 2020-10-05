@@ -90,12 +90,12 @@ func main() {
 			go parseDomoplius()
 			go parseAlio()
 			go parseRinka()
-			go parseKampas()
+			//go parseKampas()
 			go parseNuomininkai()
-			minimumWaitMinutes := 3
-			maxDelay := 2
-			randomDelay := rand.Intn(maxDelay)
-			time.Sleep(time.Duration(minimumWaitMinutes+randomDelay) * time.Minute)
+			minimumWaitSeconds := 3 * 60
+			maxDelaySeconds := 3 * 60
+			randomDelaySeconds := rand.Intn(maxDelaySeconds)
+			time.Sleep(time.Duration(minimumWaitSeconds+randomDelaySeconds) * time.Second)
 		}
 	}()
 
