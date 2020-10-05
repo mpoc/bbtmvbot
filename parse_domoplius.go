@@ -56,9 +56,15 @@ func parseDomoplius() {
 		p.Description = postDoc.Find("div.container > div.group-comments").Text()
 
 		// Extract address:
-		tmp = postDoc.Find(".panel > .container > .container > h1").Text()
+		tmp = ""
+		postDoc.Find(".breadcrumb-item > a > span[itemprop=name]").Each(func(i int, selection *goquery.Selection) {
+			if i != 0 {
+				tmp += ", "
+			}
+			tmp += selection.Text()
+		})
 		if tmp != "" {
-			p.Address = strings.Split(tmp, "nuoma ")[1]
+			p.Address = tmp
 		}
 
 		// Extract heating:
