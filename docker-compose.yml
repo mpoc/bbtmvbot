@@ -13,4 +13,13 @@ services:
     ports:
       - 3000:3000
     links:
+      - "influxdb"
+  influxdb:
+    image: influxdb
+    ports:
+      - 8086:8086
+    volumes:
+      - "./influxdb:/var/lib/influxdb"
+    links:
       - "bbtmvbot"
+      
