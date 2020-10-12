@@ -5,6 +5,8 @@ services:
     container_name: bbtmvbot
     restart: unless-stopped
     build: .
+    ports:
+      - 3999:3999
     volumes:
       - ./telegram.conf:/app/telegram.conf
       - ./database.db:/app/database.db
