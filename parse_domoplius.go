@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/base64"
-	"fmt"
 	"log"
 	"regexp"
 	"strconv"
@@ -47,24 +45,19 @@ func parseDomoplius() {
 		// ------------------------------------------------------------
 
 		// Extract phone:
-		tmp, exists := postDoc.Find("#phone_button_4 > span").Attr("data-value")
-		if exists {
-			p.Phone = domopliusDecodeNumber(tmp)
+		tmp, err := postDoc.Find("#phone_button_4").Html()
+		if err == nil {
+			tmp = domopliusDecodeNumber(tmp)
+			p.Phone = strings.ReplaceAll(tmp, " ", "")
 		}
 
 		// Extract description:
 		p.Description = postDoc.Find("div.container > div.group-comments").Text()
 
 		// Extract address:
-		tmp = ""
-		postDoc.Find(".breadcrumb-item > a > span[itemprop=name]").Each(func(i int, selection *goquery.Selection) {
-			if i != 0 {
-				tmp += ", "
-			}
-			tmp += selection.Text()
-		})
+		tmp = postDoc.Find(".panel > .container > .container > h1").Text()
 		if tmp != "" {
-			p.Address = tmp
+			p.Address = strings.Split(tmp, "nuoma ")[1]
 		}
 
 		// Extract heating:
@@ -133,23 +126,45 @@ func parseDomoplius() {
 	})
 }
 
-func domopliusDecodeNumber(str string) string {
+var regexDomopliusExtractNumberMap = regexp.MustCompile(`(\w+)='([^']+)'`)
+var regexDomopliusExtractNumberSeq = regexp.MustCompile(`document\.write\(([\w+]+)\);`)
 
-	msgRaw, err := base64.StdEncoding.DecodeString(str[2:])
-	if err != nil {
-		fmt.Printf("Error decoding string: %s ", err.Error())
-		return ""
+func domopliusDecodeNumber(str string) string {
+	// Create map:
+	arr := regexDomopliusExtractNumberMap.FindAllSubmatch([]byte(str), -1)
+	mymap := make(map[string]string, len(arr))
+	for _, v := range arr {
+		mymap[string(v[1])] = string(v[2])
 	}
-	msg := strings.ReplaceAll(string(msgRaw), " ", "")
+
+	// Create sequence:
+	arr = regexDomopliusExtractNumberSeq.FindAllSubmatch([]byte(str), -1)
+	var seq string
+	for _, v := range arr {
+		seq += "+" + string(v[1])
+	}
+	seq = strings.TrimLeft(seq, "+")
+
+	// Split sequence into array:
+	splittedSeq := strings.Split(seq, "+")
+
+	// Build final string:
+	var msg string
+	for _, v := range splittedSeq {
+		msg += mymap[v]
+	}
+
+	// Remove spaces
+	msg = strings.ReplaceAll(msg, " ", "")
 
 	// Replace 00 in the beginning to +
 	if strings.HasPrefix(msg, "00") {
-		return strings.Replace(msg, "00", "+", 1)
+		msg = strings.Replace(msg, "00", "+", 1)
 	}
 
 	// Replace 86 in the beginning to +3706
 	if strings.HasPrefix(msg, "86") {
-		return strings.Replace(msg, "86", "+3706", 1)
+		msg = strings.Replace(msg, "86", "+3706", 1)
 	}
 
 	return msg

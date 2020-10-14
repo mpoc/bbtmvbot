@@ -2,7 +2,6 @@ package main
 
 const statsTemplate = `Boto statistinė informacija:
 » *Lankytojai:* %d (iš jų %d įjungę pranešimus)
-» *Iš jų ieškantys butų be tarpininko mokesčių:* %d 
 » *Nuscreipinta skelbimų:* %d
 » *Vidutiniai kainų nustatymai:* Nuo %d€ iki %d€
 » *Vidutiniai kambarių sk. nustatymai:* Nuo %d iki %d`
@@ -19,7 +18,7 @@ Tai yra botas (scriptas), kuris skenuoja įvairius populiariausius būtų nuomos
 
 const errorText = `Įvyko duomenų bazės klaida! Praneškite apie tai chat grupėje https://t.me/joinchat/G2hnjQ80K5qZaeHTEOFrDA`
 
-const configText = "Naudokite tokį formatą:\n\n```\n/config <kaina_nuo> <kaina_iki> <kambariai_nuo> <kambariai_iki> <metai_nuo> <min_aukštas> <rodyti_su_mokesčiu (taip/ne)>\n```\nPavyzdys:\n```\n/config 200 330 1 2 2000 2 taip\n```"
+const configText = "Naudokite tokį formatą:\n\n```\n/config <kaina_nuo> <kaina_iki> <kambariai_nuo> <kambariai_iki> <metai_nuo>\n```\nPavyzdys:\n```\n/config 200 330 1 2 2000\n```"
 
 const configErrorText = "Neteisinga įvestis! " + configText
 
@@ -27,6 +26,4 @@ const activeSettingsText = `*Jūsų aktyvūs nustatymai:*
 » *Pranešimai:* %s
 » *Kaina:* Nuo %d€ iki %d€
 » *Kambarių sk.:* Nuo %d iki %d
-» *Metai nuo:* %d
-» *Aukštai nuo:* %d
-» *Rodyti ir su mokesčiu:* %s`
+» *Metai nuo:* %d`

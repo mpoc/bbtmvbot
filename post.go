@@ -23,7 +23,6 @@ type Post struct {
 	Price       int
 	Rooms       int
 	Year        int
-	WithFee     bool
 }
 
 // Ensure these are lowercase
@@ -138,19 +137,13 @@ func (p *Post) message(ID int64) string {
 		fmt.Fprintf(&sb, "» *Aukštas:* `%d`\n", p.Floor)
 	}
 
-	var showWithFee = "taip"
-	if !p.WithFee {
-		showWithFee = "ne"
-	}
-	fmt.Fprintf(&sb, "» *Mokestis*: `%s`\n", showWithFee)
-
 	return sb.String()
 }
 
 func (p *Post) debugMessage(rowID int64) string {
 	return fmt.Sprintf(
-		"\tID:%d Link:%d Tel:%s Desc:%d Addr:%d Heat:%d Fl:%d FlTot:%d Area:%d Price:%d Room:%d Year:%d WithFees:%t",
-		rowID, len(p.Link), p.Phone, len(p.Description), len(p.Address), len(p.Heating), p.Floor, p.FloorTotal, p.Area, p.Price, p.Rooms, p.Year, p.WithFee,
+		"\tID:%d Link:%d Tel:%s Desc:%d Addr:%d Heat:%d Fl:%d FlTot:%d Area:%d Price:%d Room:%d Year:%d",
+		rowID, len(p.Link), p.Phone, len(p.Description), len(p.Address), len(p.Heating), p.Floor, p.FloorTotal, p.Area, p.Price, p.Rooms, p.Year,
 	)
 }
 
@@ -161,17 +154,12 @@ func (p *Post) send(postID int64) {
 	enabled=1 AND
 	((price_from <= ? AND price_to >= ?) OR ? = 0) AND
 	((rooms_from <= ? AND rooms_to >= ?) OR ? = 0) AND
-	(year_from <= ? OR ? = 0) AND
-	min_floor <= ?`
-
-	if p.WithFee {
-		query += " AND show_with_fee = 1"
-	}
+	(year_from <= ? OR ? = 0)`
 
 	rows, err := db.Query(query,
 		p.Price, p.Price,
 		p.Price, p.Rooms, p.Rooms,
-		p.Rooms, p.Year, p.Year, p.Floor)
+		p.Rooms, p.Year, p.Year)
 	if err != nil {
 		panic(err)
 		//return
@@ -206,9 +194,9 @@ func (p *Post) InDatabase() bool {
 }
 
 // ToDatabase saves post to database, so it won't be sent again.
-func (p *Post) toDatabase(excluded bool, reason string) (rowID int64) {
+func (p *Post) toDatabase(hasFee bool, reason string) (rowID int64) {
 	query := "INSERT INTO posts(url, excluded, reason) values (?, ?, ?)"
-	res, err := db.Exec(query, p.Link, excluded, reason)
+	res, err := db.Exec(query, p.Link, hasFee, reason)
 	if err != nil {
 		panic(err)
 	}
@@ -221,19 +209,6 @@ func (p *Post) toDatabase(excluded bool, reason string) (rowID int64) {
 	return lastInsertedID
 }
 
-func (p *Post) setWithFee(withFee bool) {
-	p.WithFee = withFee
-}
-
-func (p Post) isExcluded() (excluded bool, reason string) {
-	// Skip posts without price
-	if p.Price == 0 {
-		return true, "0eur price"
-	}
-
-	return false, ""
-}
-
 // Handle handles post (e.g. sends to subscribers).
 func (p *Post) Handle() {
 	p.Phone = strings.TrimSpace(p.Phone)
@@ -241,17 +216,13 @@ func (p *Post) Handle() {
 	p.Address = strings.TrimSpace(strings.Title(p.Address))
 	p.Heating = strings.TrimSpace(p.Heating)
 
-	// Check if we need to exclude this post
-	if excluded, reason := p.isExcluded(); excluded {
+	// Exclude
+	if excluded, reason := p.hasFee(); excluded {
 		rowID := p.toDatabase(true, reason)
 		log.Println("// Excluded ", rowID, "|", reason)
 		return
 	}
 
-	withFee, _ := p.hasFee()
-	p.setWithFee(withFee)
-
-	// Add to database, so it won't be sent again
 	rowID := p.toDatabase(false, "")
 
 	p.send(rowID)
