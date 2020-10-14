@@ -10,6 +10,8 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+const userAgent = "Mozilla/5.0 (Linux; Android 9; SAMSUNG GT-I9505 Build/LRX22C) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.93 Mobile Safari/537.36"
+
 const (
 	parseLinkAlio        = "https://www.alio.lt/paieska/?category_id=1393&city_id=228626&search_block=1&search[eq][adresas_1]=228626&order=ad_id"
 	parseLinkAruodas     = "https://m.aruodas.lt/?obj=4&FRegion=461&FDistrict=1&FOrder=AddDate&from_search=1&detailed_search=1&FShowOnly=FOwnerDbId0%2CFOwnerDbId1&act=search"
@@ -20,26 +22,18 @@ const (
 	parseLinkSkelbiu     = "https://www.skelbiu.lt/skelbimai/?cities=465&category_id=322&cities=465&district=0&cost_min=&cost_max=&status=0&space_min=&space_max=&rooms_min=&rooms_max=&building=0&year_min=&year_max=&floor_min=&floor_max=&floor_type=0&user_type=0&type=1&orderBy=1&import=2&keywords="
 )
 
-func compileAddressWithStreet(district, street, houseNumber string) (address string) {
-	if district == "" {
-		address = "Vilnius"
-	} else if street == "" {
-		address = "Vilnius, " + district
-	} else if houseNumber == "" {
-		address = "Vilnius, " + district + ", " + street
-	} else {
-		address = "Vilnius, " + district + ", " + street + " " + houseNumber
-	}
+func compileAddressWithStreet(state, street, houseNumber string) (address string) {
+	address = compileAddress(state, street+" "+houseNumber)
 	return
 }
 
-func compileAddress(district, street string) (address string) {
-	if district == "" {
-		address = "Vilnius"
-	} else if street == "" {
-		address = "Vilnius, " + district
-	} else {
-		address = "Vilnius, " + district + ", " + street
+func compileAddress(state, street string) (address string) {
+	address = "Vilnius"
+	if state != "" {
+		address += ", " + state
+	}
+	if street != "" {
+		address += ", " + street
 	}
 	return
 }
@@ -47,7 +41,12 @@ func compileAddress(district, street string) (address string) {
 var httpClient = &http.Client{Timeout: time.Second * 30}
 
 func fetch(link string) ([]byte, error) {
-	res, err := httpClient.Get(link)
+	req, err := http.NewRequest("GET", link, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	res, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +66,12 @@ func fetch(link string) ([]byte, error) {
 }
 
 func fetchDocument(link string) (*goquery.Document, error) {
-	res, err := httpClient.Get(link)
+	req, err := http.NewRequest("GET", link, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	res, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

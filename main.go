@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -14,13 +15,15 @@ import (
 )
 
 type user struct {
-	id        int
-	enabled   int
-	priceFrom int
-	priceTo   int
-	roomsFrom int
-	roomsTo   int
-	yearFrom  int
+	id          int
+	enabled     int
+	priceFrom   int
+	priceTo     int
+	roomsFrom   int
+	roomsTo     int
+	yearFrom    int
+	minFloor    int
+	showWithFee int
 }
 
 type stats struct {
@@ -31,6 +34,7 @@ type stats struct {
 	averagePriceTo    int
 	averageRoomsFrom  int
 	averageRoomsTo    int
+	usersWithFee      int
 }
 
 var bot *tb.Bot
@@ -86,9 +90,12 @@ func main() {
 			go parseDomoplius()
 			go parseAlio()
 			go parseRinka()
-			go parseKampas()
+			//go parseKampas()
 			go parseNuomininkai()
-			time.Sleep(3 * time.Minute)
+			minimumWaitSeconds := 3 * 60
+			maxDelaySeconds := 3 * 60
+			randomDelaySeconds := rand.Intn(maxDelaySeconds)
+			time.Sleep(time.Duration(minimumWaitSeconds+randomDelaySeconds) * time.Second)
 		}
 	}()
 
@@ -110,8 +117,13 @@ func getActiveSettingsText(sender *tb.User) (string, error) {
 		status = "Išjungti"
 	}
 
-	msg := fmt.Sprintf(activeSettingsText, status, u.priceFrom,
-		u.priceTo, u.roomsFrom, u.roomsTo, u.yearFrom)
+	var showWithFee = "taip"
+	if u.showWithFee == 0 {
+		showWithFee = "ne"
+	}
+
+	msg := fmt.Sprintf(activeSettingsText, status, u.priceFrom, u.priceTo,
+		u.roomsFrom, u.roomsTo, u.yearFrom, u.minFloor, showWithFee)
 	return msg, nil
 }
 
@@ -158,7 +170,7 @@ func ensureUserInDB(userID int) {
 func getUser(userID int) (user, error) {
 	query := "SELECT * FROM users WHERE id=? LIMIT 1"
 	var u user
-	err := db.QueryRow(query, userID).Scan(&u.id, &u.enabled, &u.priceFrom, &u.priceTo, &u.roomsFrom, &u.roomsTo, &u.yearFrom)
+	err := db.QueryRow(query, userID).Scan(&u.id, &u.enabled, &u.priceFrom, &u.priceTo, &u.roomsFrom, &u.roomsTo, &u.yearFrom, &u.minFloor, &u.showWithFee)
 	if err != nil {
 		panic(err)
 	}
@@ -174,12 +186,13 @@ func getStats() (stats, error) {
 			(SELECT CAST(AVG(price_from) AS INT) FROM users WHERE enabled=1) AS avg_price_from,
 			(SELECT CAST(AVG(price_to) AS INT) FROM users WHERE enabled=1) AS avg_price_to,
 			(SELECT CAST(AVG(rooms_from) AS INT) FROM users WHERE enabled=1) AS avg_rooms_from,
-			(SELECT CAST(AVG(rooms_to) AS INT) FROM users WHERE enabled=1) AS avg_rooms_to
+			(SELECT CAST(AVG(rooms_to) AS INT) FROM users WHERE enabled=1) AS avg_rooms_to,
+		    (SELECT COUNT(*) FROM users WHERE show_with_fee=1) AS users_with_fee
 		FROM users LIMIT 1`
 	var s stats
 	err := db.QueryRow(query).Scan(&s.postsCount, &s.usersCount,
 		&s.enabledUsersCount, &s.averagePriceFrom, &s.averagePriceTo,
-		&s.averageRoomsFrom, &s.averageRoomsTo)
+		&s.averageRoomsFrom, &s.averageRoomsTo, &s.usersWithFee)
 	if err != nil {
 		log.Println(err)
 		return stats{}, err

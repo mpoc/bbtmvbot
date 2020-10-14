@@ -10,6 +10,16 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
+type StatusChangeType struct {
+	value   int
+	message string
+}
+
+var (
+	DisableMessages = StatusChangeType{value: 0, message: "Pranešimai išjungti! Naudokite komandą /enable kad juos įjungti."}
+	EnableMessages  = StatusChangeType{value: 1, message: "Pranešimai įjungti! Naudokite komandą /disable kad juos išjungti."}
+)
+
 func handleCommandStats(m *tb.Message) {
 	s, err := getStats()
 	if err != nil {
@@ -17,32 +27,25 @@ func handleCommandStats(m *tb.Message) {
 		return
 	}
 
-	msg := fmt.Sprintf(statsTemplate, s.usersCount,
-		s.enabledUsersCount, s.postsCount, s.averagePriceFrom,
+	msg := fmt.Sprintf(statsTemplate, s.usersCount, s.enabledUsersCount,
+		s.usersCount-s.usersWithFee, s.postsCount, s.averagePriceFrom,
 		s.averagePriceTo, s.averageRoomsFrom, s.averageRoomsTo)
 
 	sendTo(m.Sender, msg)
 }
 
 func handleCommandEnable(m *tb.Message) {
-	query := "UPDATE users SET enabled=1 WHERE id=?"
-	_, err := db.Exec(query, m.Sender.ID)
-	if err != nil {
-		sendTo(m.Sender, errorText)
-		return
-	}
-
-	ActiveSettingsText, err := getActiveSettingsText(m.Sender)
-	if err != nil {
-		sendTo(m.Sender, errorText)
-		return
-	}
-	sendTo(m.Sender, "Pranešimai įjungti! Naudokite komandą /disable kad juos išjungti.\n\n"+ActiveSettingsText)
+	handleUserStatusChange(m, EnableMessages)
 }
 
 func handleCommandDisable(m *tb.Message) {
-	query := "UPDATE users SET enabled=0 WHERE id=?"
-	_, err := db.Exec(query, m.Sender.ID)
+	handleUserStatusChange(m, DisableMessages)
+}
+
+func handleUserStatusChange(m *tb.Message, stateStatus StatusChangeType) {
+	message := stateStatus.message
+	query := "UPDATE users SET enabled=? WHERE id=?"
+	_, err := db.Exec(query, stateStatus.value, m.Sender.ID)
 	if err != nil {
 		sendTo(m.Sender, errorText)
 		return
@@ -53,10 +56,10 @@ func handleCommandDisable(m *tb.Message) {
 		sendTo(m.Sender, errorText)
 		return
 	}
-	sendTo(m.Sender, "Pranešimai išjungti! Naudokite komandą /enable kad juos įjungti.\n\n"+ActiveSettingsText)
+	sendTo(m.Sender, message+"\n\n"+ActiveSettingsText)
 }
 
-var validConfig = regexp.MustCompile(`^\/config (\d{1,5}) (\d{1,5}) (\d{1,2}) (\d{1,2}) (\d{4})$`)
+var validConfig = regexp.MustCompile(`^/config (\d{1,5}) (\d{1,5}) (\d{1,2}) (\d{1,2}) (\d{4}) (\d{1,3}) (taip|ne)$`)
 
 func handleCommandConfig(m *tb.Message) {
 	msg := strings.ToLower(strings.TrimSpace(m.Text))
@@ -80,20 +83,23 @@ func handleCommandConfig(m *tb.Message) {
 	roomsFrom, _ := strconv.Atoi(extracted[3])
 	roomsTo, _ := strconv.Atoi(extracted[4])
 	yearFrom, _ := strconv.Atoi(extracted[5])
+	minFloor, _ := strconv.Atoi(extracted[6])
+	showWithFee := strings.ToLower(extracted[7]) == "taip"
 
 	// Values check
 	priceCorrect := priceFrom >= 0 || priceTo <= 100000 && priceTo >= priceFrom
 	roomsCorrect := roomsFrom >= 0 || roomsTo <= 100 && roomsTo >= roomsFrom
 	yearCorrect := yearFrom <= time.Now().Year()
+	minFloorCorrect := minFloor >= 0 && minFloor <= 100
 
-	if !(priceCorrect && roomsCorrect && yearCorrect) {
+	if !(priceCorrect && roomsCorrect && yearCorrect && minFloorCorrect) {
 		sendTo(m.Sender, configErrorText)
 		return
 	}
 
 	// Update in DB
-	query := "UPDATE users SET enabled=1, price_from=?, price_to=?, rooms_from=?, rooms_to=?, year_from=? WHERE id=?"
-	_, err := db.Exec(query, priceFrom, priceTo, roomsFrom, roomsTo, yearFrom, m.Sender.ID)
+	query := "UPDATE users SET enabled=1, price_from=?, price_to=?, rooms_from=?, rooms_to=?, year_from=?, min_floor=?, show_with_fee=? WHERE id=?"
+	_, err := db.Exec(query, priceFrom, priceTo, roomsFrom, roomsTo, yearFrom, minFloor, showWithFee, m.Sender.ID)
 	if err != nil {
 		sendTo(m.Sender, errorText)
 		return

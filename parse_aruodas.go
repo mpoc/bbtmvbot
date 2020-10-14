@@ -44,7 +44,11 @@ func parseAruodas() {
 		var tmp string
 
 		// Extract phone:
-		p.Phone = postDoc.Find("a[data-id=\"subtitlePhone1\"][data-type=\"phone\"]").First().Text()
+		tmp = postDoc.Find("a[data-id=\"subtitlePhone1\"][data-type=\"phone\"]").First().Text()
+		if strings.HasPrefix(tmp, "86") {
+			tmp = strings.Replace(tmp, "86", "+3706", 1)
+		}
+		p.Phone = tmp
 
 		// Extract description:
 		p.Description = postDoc.Find("#advertInfoContainer > #collapsedTextBlock > #collapsedText").Text()
